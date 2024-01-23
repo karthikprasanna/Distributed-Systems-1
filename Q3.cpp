@@ -53,9 +53,7 @@ int main(int argc, char* argv[])
     int recieve_configurations;
     int N, M, T;
     int **grid, **gathered;
-    // grid = (int**)malloc(1000*sizeof(int*));
-
-
+   
     int *flatten_send, *flatten_recieve, *buffer;
     int counts_send[size], displacements[size], count_recieve;
 
@@ -83,7 +81,7 @@ int main(int argc, char* argv[])
         }
 
         for (int i = 0; i < size; i++) {
-            counts_send[i] = min(block_size * M, N * M - i * block_size * M);
+            counts_send[i] = block_size * M;
             displacements[i] = i * block_size * M;
 
             if (i >= N)
@@ -93,6 +91,11 @@ int main(int argc, char* argv[])
             }
         }
 
+        if (N % size != 0)
+        {
+            counts_send[size - 1] = N * M - block_size * (size - 1) * M;
+        }
+        
         flatten_recieve = (int*)malloc(N * M * sizeof(int));
         gathered = (int**)malloc(N * sizeof(int*));
         for (int i = 0; i < N; ++i)
@@ -112,16 +115,25 @@ int main(int argc, char* argv[])
     else
     MPI_Scatterv(NULL, NULL, NULL, MPI_INT, buffer, count_recieve, MPI_INT, 0, MPI_COMM_WORLD);
     
-    if (my_rank == 0)
-    cout<<count_recieve<<' '<<M<<endl;
     int n = count_recieve / M;
     
     int** block = (int**)malloc(n * sizeof(int*));
     int** simulated = (int**)malloc(n * sizeof(int*));
     int *flatten_simulated = (int*)malloc(count_recieve * sizeof(int));
     int *flatten_block = (int*)malloc(count_recieve * sizeof(int));
-    int *bottom = (int*)malloc(M * sizeof(int));
-    int *top = (int*)malloc(M * sizeof(int));
+    int *bottom = NULL;
+    int *top = NULL;
+
+    if (my_rank > 0)
+    {
+        top = (int*)malloc(M * sizeof(int));
+    }
+    
+    if (my_rank < size - 1)
+    {
+        bottom = (int*)malloc(M * sizeof(int));
+    }
+    
 
     for (int i = 0; i < n; i++)
     {
@@ -165,12 +177,15 @@ int main(int argc, char* argv[])
         }
     }
 
+    // cout<<endl;
+    // cout<<top<<bottom<<endl;
     int count;
     for (int i = 0; i < n; i++)
     {
         for (int j = 0; j < M; j++)
         {
             count = num_neighbours(block, top, bottom, n, M, i, j);
+            // cout<<count<<' ';
             if (is_alive(block, top, bottom, n, M, i, j))
             {
                 if (count < 2 || count > 3)
@@ -195,10 +210,8 @@ int main(int argc, char* argv[])
                 
             }
         }
-        
+    // cout<<endl;    
     }
-    
-
 
     if (my_rank == 0)
     {
@@ -247,4 +260,13 @@ int main(int argc, char* argv[])
 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0
+
+4 4 1
+0 0 0 0
+0 0 0 0
+0 0 1 0
+0 0 0 0
+
+
 */
+
