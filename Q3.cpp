@@ -98,6 +98,7 @@ int main(int argc, char *argv[])
     MPI_Bcast(&M, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&T, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
+    int new_size = min(size, N);
     count_recieve = counts_send[my_rank];
     int n = count_recieve / M;
 
@@ -113,7 +114,7 @@ int main(int argc, char *argv[])
         top = (int *)malloc(M * sizeof(int));
     }
 
-    if (my_rank < size - 1)
+    if (my_rank < new_size - 1)
     {
         bottom = (int *)malloc(M * sizeof(int));
     }
@@ -137,61 +138,65 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (my_rank % 2 == 0)
+        if (my_rank < new_size)
         {
-            if (my_rank > 0)
+            if (my_rank % 2 == 0)
             {
-                MPI_Send(block[0], M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD);
-                MPI_Recv(top, M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }
-
-            if (my_rank < size - 1)
-            {
-                MPI_Send(block[n - 1], M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
-                MPI_Recv(bottom, M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            }
-        }
-        else
-        {
-            if (my_rank > 0)
-            {
-                MPI_Recv(top, M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Send(block[0], M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD);
-            }
-
-            if (my_rank < size - 1)
-            {
-                MPI_Recv(bottom, M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Send(block[n - 1], M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
-            }
-        }
-
-        int count;
-        for (int i = 0; i < n; i++)
-        {
-            for (int j = 0; j < M; j++)
-            {
-                count = num_neighbours(block, top, bottom, n, M, i, j);
-                if (is_alive(block, top, bottom, n, M, i, j))
+                if (my_rank > 0)
                 {
-                    if (count < 2 || count > 3)
-                    {
-                        simulated[i][j] = 0;
-                    }
-                    else
-                    {
-                        simulated[i][j] = 1;
-                    }
+                    MPI_Send(block[0], M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD);
+                    MPI_Recv(top, M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
-                else
+
+                if (my_rank < new_size - 1)
                 {
-                    if (count == 3)
+                    MPI_Send(block[n - 1], M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
+                    MPI_Recv(bottom, M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+            else
+            {
+                if (my_rank > 0)
+                {
+                    MPI_Recv(top, M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    MPI_Send(block[0], M, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD);
+                }
+
+                if (my_rank < new_size - 1)
+                {
+                    MPI_Recv(bottom, M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                    MPI_Send(block[n - 1], M, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
+                }
+            }
+
+            int count;
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < M; j++)
+                {
+                    count = num_neighbours(block, top, bottom, n, M, i, j);
+
+                    if (is_alive(block, top, bottom, n, M, i, j))
                     {
-                        simulated[i][j] = 1;
+                        if (count < 2 || count > 3)
+                        {
+                            simulated[i][j] = 0;
+                        }
+                        else
+                        {
+                            simulated[i][j] = 1;
+                        }
                     }
                     else
                     {
-                        simulated[i][j] = 0;
+                        if (count == 3)
+                        {
+                            simulated[i][j] = 1;
+                        }
+                        else
+                        {
+                            simulated[i][j] = 0;
+                        }
                     }
                 }
             }
