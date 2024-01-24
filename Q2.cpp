@@ -62,9 +62,12 @@ int main(int argc, char *argv[])
         }
     }
     MPI_Bcast(&counts_send, size, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&displacements, size, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     count_recieve = counts_send[my_rank];
+    int displacement = displacements[my_rank];
+    displacement /= N;
     int n = count_recieve / N;
 
     int **block = (int **)malloc(n * sizeof(int *));
@@ -106,14 +109,14 @@ int main(int argc, char *argv[])
         {
             for (int j = 0; j < N; j++)
             {
-                if (column[i] != -1 && row[j] != -1)
+                if (column[i + displacement] != -1 && row[j] != -1)
                 {
                     if (block[i][j] == -1)
                     {
-                        block[i][j] = column[i] + row[j];
+                        block[i][j] = column[i + displacement] + row[j];
                     }
                     else
-                        block[i][j] = min(block[i][j], column[i] + row[j]);
+                        block[i][j] = min(block[i][j], column[i + displacement] + row[j]);
                 }
             }
         }
